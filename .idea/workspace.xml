@@ -90,19 +90,4 @@
     <MESSAGE value="Write plugin to threshold mitotic cells in an image" />
     <option name="LAST_COMMIT_MESSAGE" value="Write plugin to threshold mitotic cells in an image" />
   </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-method">
-          <url>jar://$PROJECT_DIR$/ij.jar!/ij/plugin/PlugIn.class</url>
-          <line>8</line>
-          <properties class="ij.plugin.PlugIn" method="run">
-            <option name="EMULATED" value="true" />
-            <option name="WATCH_EXIT" value="false" />
-          </properties>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
-  </component>
 </project>

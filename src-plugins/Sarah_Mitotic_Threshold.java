@@ -3,7 +3,6 @@ import ij.ImagePlus;
 import ij.WindowManager;
 import ij.gui.*;
 import ij.io.DirectoryChooser;
-import ij.measure.ResultsTable;
 import ij.plugin.PlugIn;
 import ij.plugin.ZProjector;
 import ij.plugin.frame.RoiManager;
@@ -12,6 +11,7 @@ import ij.process.ImageConverter;
 
 import java.awt.*;
 import java.io.File;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -23,11 +23,13 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         //IJ.run("Bio-Formats Importer");// Open new file;
 
         //Choose directory
-        roiManager = new RoiManager();
         DirectoryChooser dc = new DirectoryChooser("Bio-Formats Mass Importer");
         String baseDirectory = dc.getDirectory();
         dc = new DirectoryChooser("Output Folder");
         String outputDirectory = dc.getDirectory();
+
+        roiManager = new RoiManager();
+        String mode = modeSelect();
 
         // list of files to actually open with Bio-Formats Importer
         ArrayList<String> filesToOpen = new ArrayList<>();
@@ -39,16 +41,16 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         for (int m = 0; m < files.length; m++) {
             filesToOpen.add(files[m].getPath());
             String id = filesToOpen.get(m);
-            if ((id.contains(".ims")) && !(id.contains("xml"))) {
+            if (((id.contains(".ims")) || (id.contains(".tif"))) && !(id.contains(".xml"))) {
                 roiManager.reset();
                 IJ.run("Bio-Formats Importer", "open=" + id + " color_mode=Default open_files view=Hyperstack stack_order=XYCZT");
-                processImage(outputDirectory);
+                processImage(outputDirectory, mode);
             }
         }
         roiManager.close();
     }
 
-    private void processImage(String outputDirectory){
+    private void processImage(String outputDirectory, String mode){
         ImagePlus imp = WindowManager.getCurrentImage();
         String filename = imp.getShortTitle();
 
@@ -58,6 +60,9 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
             WindowManager.getImage(channelTitles[i]).close();
         }
         imp = WindowManager.getCurrentImage();
+        if (mode == "") {
+
+        }
         imp = ZProjector.run(imp, "max");
         IJ.run(imp, "Enhance Contrast", "saturated=0.35");
         imp.setTitle("DAPI Z-project");
@@ -88,7 +93,7 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         imp.updateAndDraw();
         IJ.run(imp, "Subtract Background...", "rolling=50");
         IJ.setAutoThreshold(imp, "MaxEntropy dark");
-        IJ.run(imp, "Analyze Particles...", "size=150-Infinity pixel show=Masks clear add");
+        IJ.run(imp, "Analyze Particles...", "size=150-Infinity pixel show=Masks exclude clear add");
         ImagePlus masks = WindowManager.getCurrentImage();
         Roi[] mitotic = roiManager.getRoisAsArray();
         masks.close();
@@ -109,7 +114,7 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         ByteProcessor bp = imp.createThresholdMask();
         imp = new ImagePlus("title", bp);
         IJ.run(imp, "Watershed", "");
-        IJ.run(imp, "Analyze Particles...", "size=200-Infinity pixel show=Masks clear add");
+        IJ.run(imp, "Analyze Particles...", "size=200-Infinity pixel show=Masks exclude clear add");
         ImagePlus masks = WindowManager.getCurrentImage();
         Roi[] cells = roiManager.getRoisAsArray();
         masks.close();
@@ -119,7 +124,6 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
 
     private ArrayList<Roi> thresholdMitotic(Roi[] mitotic, Roi[] cells) {
         ArrayList<Roi> mitoticCells = new ArrayList<>();
-        System.out.println(mitotic.length);
         for (Roi mitoticCell : mitotic) {
             double[] centre = mitoticCell.getContourCentroid();
             for (Roi cell : cells) {
@@ -146,9 +150,10 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         roiManager.runCommand("Show All");
         for (int i=0; i < mitoticCells.size(); i++) {
             ImagePlus impCrop = cropRoi(original, i);
-            //IJ.saveAs(impCrop, "Tiff", newDirectory + filename + "_" + i);
-            IJ.saveAs(impCrop, "Tiff", Paths.get(filePath, filename + "_" + i).toString());
-            //IJ.saveAs("Tiff", Paths.get(filePath, filename).toString());
+            Path path = Paths.get(filePath, filename + "_" + i);
+            IJ.saveAs(impCrop, "Tiff", path.toString());
+            //temp: save as png to confirm images easily
+            IJ.saveAs(impCrop, "PNG", path.toString());
             impCrop.close();
         }
     }
@@ -162,5 +167,13 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         double lCrop = 30*pixelToMicron;
         original.setRoi (new Roi(pt.x - lCrop / 2, pt.y - lCrop / 2, lCrop, lCrop));
         return original.crop();
+    }
+
+    private String modeSelect() {
+        GenericDialog channelDialog = new NonBlockingGenericDialog("Mode Select");
+        String[] modeArray = new String[]{"Z-Projected folder", "Folder of Z-Stacks"};
+        channelDialog.addChoice("Form of input:", modeArray, "Z-Projected folder");
+        channelDialog.showDialog();
+        return channelDialog.getNextChoice();
     }
 }

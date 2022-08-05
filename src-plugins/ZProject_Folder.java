@@ -6,7 +6,6 @@ import ij.plugin.PlugIn;
 import ij.plugin.ZProjector;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
@@ -20,13 +19,13 @@ public class ZProject_Folder implements PlugIn {
         dc = new DirectoryChooser("Output Folder");
         String outputDirectory = dc.getDirectory();
 
-        // list of files to actually open with Bio-Formats Importer
+        // List of files to actually open with Bio-Formats Importer
         ArrayList<String> filesToOpen = new ArrayList<>();
-
-        // process all files in the chosen directory
         File dir = new File(baseDirectory);
         File[] files = dir.listFiles();
 
+        // For each file in the directory, creates a Z-project image using maximum intensity
+        // and saves it to the output folder
         for (int m = 0; m < files.length; m++) {
             filesToOpen.add(files[m].getPath());
             String id = filesToOpen.get(m);
@@ -38,8 +37,8 @@ public class ZProject_Folder implements PlugIn {
                 imp = ZProjector.run(imp, "max");
                 String filePath = Paths.get(outputDirectory, filename).toString();
                 IJ.saveAs(imp, "Tiff", filePath);
-                //temp: save as jpeg to confirm images easily
-                IJ.saveAs(imp, "JPEG", filePath);
+                // TEMP: save as png to confirm images easily
+                IJ.saveAs(imp, "PNG", filePath);
                 imp.close();
                 original.close();
             }

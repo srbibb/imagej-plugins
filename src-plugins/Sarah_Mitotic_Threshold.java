@@ -62,9 +62,15 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
 
         // To crop the composite image of the cell instead of DAPI channel
         // Also must change image passed to saveImages from originalImage to full
+        // May need to adjust channel colours
+        // NOTE: Doesn't Z-project file
         //ImagePlus full = imp.duplicate();
+        //full.setDisplayMode(IJ.COLOR);
+        //full.setC(3);
+        //IJ.run(full, "Yellow", "");
+        //full.setC(4);
+        //IJ.run(full, "Blue", "");
         //IJ.run(full, "Make Composite", "");
-        //IJ.run(full, "Enhance Contrast", "saturated=0.35");
         //full.hide();
 
         imp = WindowManager.getCurrentImage();
@@ -186,7 +192,9 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         // For each cell, takes the Z-project of the original image and saves the cropped version
         for (int i=0; i < mitoticCells.size(); i++) {
             ImagePlus impCrop = cropRoi(original, i);
-            //Assuming not more than 52 cells
+
+            // Uses letters to order cropped files
+            // Assumes no more than 52 mitotic cells in an image
             int value = no % 26;
             value += 65;
             String letter = Character.toString((char) value);

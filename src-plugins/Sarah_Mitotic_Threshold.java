@@ -1,3 +1,4 @@
+import ij.CompositeImage;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.WindowManager;
@@ -45,9 +46,9 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         for (int m = 0; m < files.length; m++) {
             filesToOpen.add(files[m].getPath());
             String id = filesToOpen.get(m);
-            if (((id.contains(".ims")) || (id.contains(".tif"))) && !(id.contains(".xml"))) {
+            if (((id.contains(".ims")) || (id.contains(".tif"))) && !(id.contains(".xml")) && !(id.contains(".png"))) {
                 roiManager.reset();
-                IJ.run("Bio-Formats Importer", "open=" + id + " color_mode=Default open_files view=Hyperstack stack_order=XYCZT");
+                IJ.run("Bio-Formats Importer", "open=" + id + " color_mode=Grayscale open_files view=Hyperstack stack_order=XYCZT");
                 processImage(outputDirectory, mode);
             }
         }
@@ -59,6 +60,15 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         ImagePlus imp = WindowManager.getCurrentImage();
         String filename = imp.getShortTitle();
 
+        // To crop the composite image of the cell instead of DAPI channel
+        // Also must change image passed to saveImages from originalImage to full
+        //ImagePlus full = imp.duplicate();
+        //IJ.run(full, "Make Composite", "");
+        //IJ.run(full, "Enhance Contrast", "saturated=0.35");
+        //full.hide();
+
+        imp = WindowManager.getCurrentImage();
+        
         // Separates the DAPI channel and closes unneeded channels
         IJ.run(imp, "Split Channels", "");
         String[] channelTitles = WindowManager.getImageTitles();
@@ -68,16 +78,14 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         imp = WindowManager.getCurrentImage();
 
         // Z-projects images if necessary
-        if (mode == "Folder of Z-Stacks") {
+        if (mode.equals("Folder of Z-Stacks")) {
             imp = ZProjector.run(imp, "max");
         }
         IJ.run(imp, "Enhance Contrast", "saturated=0.35");
         imp.setTitle("DAPI Z-project");
 
         // Sets what will be visible in the resulting cropped image - currently is only DAPI
-        // Changes image colour to blue
         ImagePlus originalImage = imp.duplicate();
-        IJ.run(originalImage, "Blue", "");
         originalImage.setTitle("Original Z-Project");
         originalImage.hide();
         imp.hide();
@@ -166,7 +174,7 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
     private void saveImages(ArrayList<Roi> mitoticCells, ImagePlus original, String filename, String outputDirectory) {
         original.show();
         WindowManager.getWindow("Original Z-Project");
-        String filePath = Paths.get(outputDirectory).toString();
+        String filePath = Paths.get(outputDirectory, filename).toString();
 
         roiManager.reset();
         for (Roi roi : mitoticCells) {
@@ -174,14 +182,25 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
         }
         roiManager.runCommand("Show All");
 
+        int no = 0;
         // For each cell, takes the Z-project of the original image and saves the cropped version
         for (int i=0; i < mitoticCells.size(); i++) {
             ImagePlus impCrop = cropRoi(original, i);
-            Path path = Paths.get(filePath, filename + "_" + i);
-            IJ.saveAs(impCrop, "Tiff", path.toString());
-            // TEMP: save as png to view images easily
-            IJ.saveAs(impCrop, "PNG", path.toString());
-            impCrop.close();
+            //Assuming not more than 52 cells
+            int value = no % 26;
+            value += 65;
+            String letter = Character.toString((char) value);
+            if (no > 25){
+                letter = "Z" + (char) value;
+            }
+            if (impCrop != null) {
+                Path path = Paths.get(filePath + "_" + letter);
+                no += 1;
+                IJ.saveAs(impCrop, "Tiff", path.toString());
+                // TEMP: save as png to view images easily
+                IJ.saveAs(impCrop, "PNG", path.toString());
+                impCrop.close();
+            }
         }
     }
 
@@ -199,7 +218,15 @@ public class Sarah_Mitotic_Threshold implements PlugIn {
 
         // Creates a ROI which is 15 microns in each direction around the centre of the current cell
         original.setRoi (new Roi(pt.x - lCrop / 2, pt.y - lCrop / 2, lCrop, lCrop));
-        return original.crop();
+        ImagePlus impCrop = original.crop();
+        // Only saves the image if it is full size to avoid cells at the edge which produce smaller images
+        System.out.println(impCrop.getHeight());
+        System.out.println(impCrop.getWidth());
+        if ((impCrop.getHeight() == 274) && (impCrop.getWidth() == 274)) {
+            return original.crop();
+        } else {
+            return null;
+        }
     }
 
     // Allows the user to select the required input using a dialog box

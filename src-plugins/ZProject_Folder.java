@@ -34,6 +34,7 @@ public class ZProject_Folder implements PlugIn {
                 ImagePlus imp = WindowManager.getCurrentImage();
                 ImagePlus original = WindowManager.getCurrentImage();
                 String filename = imp.getShortTitle();
+                filename = filename.split("-")[1];
                 imp = ZProjector.run(imp, "max");
                 String filePath = Paths.get(outputDirectory, filename).toString();
                 IJ.saveAs(imp, "Tiff", filePath);
